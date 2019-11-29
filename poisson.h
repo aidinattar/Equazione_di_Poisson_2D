@@ -14,7 +14,6 @@ class poisson{
         void calcMatrix ( void );
         void calcf      ( void );
         void calcTilde  ( void );
-        void calcPhi    ( void );
         void gaussmethod( void );
 
         double* multi   ( double**, double* );

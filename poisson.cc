@@ -1,6 +1,9 @@
 #include <fstream>
-#include "poisson.h"
 #include <cmath>
+
+#include "poisson.h"
+
+#include <iostream>
 
 poisson::poisson( double lx, double ly,
                   double nx, double ny,
@@ -60,7 +63,7 @@ void poisson::calcMatrix( void ){
             i1 = round( m / Ny );
             j1 =    m - j * Nx  ;
 
-            if( i == 1 || i == l || j == 1 || j == l ){
+            if( ( i == 1 || i == l ) && ( j == 1 || j == l ) ){
                     if( l == m ) matrix[ l - 1 ][ m - 1 ] = 1;
                     else         matrix[ l - 1 ][ m - 1 ] = 0;
                 }
@@ -70,7 +73,11 @@ void poisson::calcMatrix( void ){
                 else
                     if( ( j1 == j + 1 || j1 == j - 1 ) && i1 == i )
                          matrix[ l - 1 ][ m - 1 ] = 1 / pow( hy, 2 );
-                    else matrix[ l - 1 ][ m - 1 ] = 0;
+                    else 
+                        if( i1 == i && j1 == j )
+                            matrix[ l - 1 ][ m - 1 ] = - 2 * 
+                                ( 1 / pow( hx, 2 ) + 1 / pow( hy, 2 ) );
+                        else matrix[ l - 1 ][ m - 1 ] = 0;
             }
         }
     }
@@ -81,17 +88,18 @@ void poisson::calcf( void ){
     int xp  = px * Nx / Lx;
     int yp  = py * Ny / Ly;
     int Lcx = Lc * Nx / Lx;
-    int Lcy = Lc * Ny / Ly; 
+    int Lcy = Lc * Ny / Ly;
 
     int i, j; 
     for( int l = 1; l <= Nx * Ny; ++l ){
         j = round( l / Ny );
         i =    l - j * Nx  ;
-        if( ( i >= xp && i <= xp + Lcx ) && ( j >= yp && j <= yp + Lcy ) )
+        if( i >= xp && i <= xp + Lcx &&
+            j >= yp && j <= yp + Lcy )
              f[ l - 1 ] = rho;
         else f[ l - 1 ] =   0;
-    }
 
+    }
     return;
 }
 
@@ -99,13 +107,24 @@ void poisson::calcTilde( void ){
     
     for( int l = 0; l < Nx * Ny; ++l )
         for( int m = 0; m < Nx * Ny; ++m )
-            if( l == m )    matilde[ l ][ m ] = 0;
-            else            matilde[ l ][ m ] = matrix[ l ][ m ] /
-                                                matrix[ l ][ l ];
+            if( l == m ){
+                matilde[ l ][ m ] = 0;
+                ftilde[ l ] = f[ l ] / matrix[ l ][ m ];
+            }
+            else {
+                matilde[ l ][ m ] = - matrix[ l ][ m ] /
+                                      matrix[ l ][ l ];
+                ftilde[ l ] = 0;
+            }
+
 
     for( int l = 0; l < Nx * Ny; ++l )
+        std::cout << matilde[ l ][ 2 ] << std::endl;
+    /*    for( int l = 0; l < Nx * Ny; ++l ){
+        
         ftilde[ l ] = f[ l ] / matrix[ l ][ l ];
-
+        std::cout << ftilde[ l ] << std::endl;
+    }*/
     return;
 }
 
@@ -122,7 +141,7 @@ void poisson::gaussmethod( void ){
         phi0 = phi1;
         phi1 = multi( matilde, phi0 );
         for( int i = 0; i < Nx * Ny; ++i )
-            phi1[ i ] += ftilde[ i ];    
+            phi1[ i ] += ftilde[ i ];
     }
 
     phi = phi1;
@@ -146,7 +165,8 @@ bool poisson::equal( double* a, double* b ){
     bool ans = true;
 
     for ( int i = 0; i < Nx * Ny; ++i )
-        if( a[ i ] != b[ i ] )  ans = false;
+        if( fabs( a[ i ] - b[ i ] ) < 0.00001 )
+            ans = false;
 
     return ans;
 }
@@ -159,7 +179,10 @@ void poisson::output( std::string nomefile ){
         j = round( l / Ny );
         i =    l - j * Nx  ;
 
-        file << i << ' ' << j << ' ' << phi[ i ];
+        file << i        << ' ' 
+             << j        << ' '
+             << phi[ i ] << std::endl
+             << std::endl;
     }
 
     return;

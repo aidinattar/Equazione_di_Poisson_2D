@@ -29,7 +29,6 @@ int main( int argc, char* argv[] ){
     phi.calcTilde();
     phi.gaussmethod();
     phi.output( file );
-
-
+    
     return 1;
 }
