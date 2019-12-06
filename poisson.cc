@@ -56,29 +56,27 @@ void poisson::calcMatrix( void ){
         i ,  j,
         i1, j1;
 
-    for( l = 1; l <= ( Nx * Ny ); ++l ){
+    for( l = 0; l < ( Nx * Ny ); ++l ){
         j = round( l / Ny );
         i =    l - j * Nx  ;
-        for( m = 1; m <= ( Nx * Ny ); ++m ){
-            i1 = round( m / Ny );
-            j1 =    m - j * Nx  ;
+        for( m = 0; m < ( Nx * Ny ); ++m ){
+            j1 = round( m / Ny );
+            i1 =   m - j1 * Nx  ;
 
-            if( ( i == 1 || i == l ) && ( j == 1 || j == l ) ){
-                    if( l == m ) matrix[ l - 1 ][ m - 1 ] = 1;
-                    else         matrix[ l - 1 ][ m - 1 ] = 0;
-                }
-            else{
+            if( ( i == 0 || i == l ) && ( j == 0 || j == l ) )
+                    if( l == m ) matrix[ l ][ m ] = 1;
+                    else         matrix[ l ][ m ] = 0;
+            else
                 if( ( i1 == i + 1 || i1 == i - 1 ) && j1 == j ) 
-                    matrix[ l - 1 ][ m - 1 ] = 1 / pow( hx, 2 );
+                    matrix[ l ][ m ] = 1 / pow( hx, 2 );
                 else
                     if( ( j1 == j + 1 || j1 == j - 1 ) && i1 == i )
-                         matrix[ l - 1 ][ m - 1 ] = 1 / pow( hy, 2 );
+                         matrix[ l ][ m ] = 1 / pow( hy, 2 );
                     else 
                         if( i1 == i && j1 == j )
-                            matrix[ l - 1 ][ m - 1 ] = - 2 * 
+                            matrix[ l ][ m ] = - 2 * 
                                 ( 1 / pow( hx, 2 ) + 1 / pow( hy, 2 ) );
-                        else matrix[ l - 1 ][ m - 1 ] = 0;
-            }
+                        else matrix[ l ][ m ] = 0;
         }
     }
 }
@@ -91,15 +89,15 @@ void poisson::calcf( void ){
     int Lcy = Lc * Ny / Ly;
 
     int i, j; 
-    for( int l = 1; l <= Nx * Ny; ++l ){
+    for( int l = 0; l < Nx * Ny; ++l ){
         j = round( l / Ny );
         i =    l - j * Nx  ;
         if( i >= xp && i <= xp + Lcx &&
             j >= yp && j <= yp + Lcy )
-             f[ l - 1 ] = rho;
-        else f[ l - 1 ] =   0;
-
+             f[ l ] = rho;
+        else f[ l ] =   0;
     }
+
     return;
 }
 
@@ -111,20 +109,13 @@ void poisson::calcTilde( void ){
                 matilde[ l ][ m ] = 0;
                 ftilde[ l ] = f[ l ] / matrix[ l ][ m ];
             }
-            else {
+            else
                 matilde[ l ][ m ] = - matrix[ l ][ m ] /
                                       matrix[ l ][ l ];
-                ftilde[ l ] = 0;
-            }
+    
+    /*for( int l = 0; l < Nx * Ny; ++l )
+        std::cout << ftilde[ l ] << ' ';*/
 
-
-    for( int l = 0; l < Nx * Ny; ++l )
-        std::cout << matilde[ l ][ 2 ] << std::endl;
-    /*    for( int l = 0; l < Nx * Ny; ++l ){
-        
-        ftilde[ l ] = f[ l ] / matrix[ l ][ l ];
-        std::cout << ftilde[ l ] << std::endl;
-    }*/
     return;
 }
 
@@ -137,14 +128,21 @@ void poisson::gaussmethod( void ){
     for( int i = 0; i < Nx * Ny; ++i )
         phi0[ i ] = ftilde[ i ];
 
-    while( equal( phi0, phi1 ) == false ){
-        phi0 = phi1;
+    bool c;
+
+    do {
         phi1 = multi( matilde, phi0 );
         for( int i = 0; i < Nx * Ny; ++i )
             phi1[ i ] += ftilde[ i ];
+        c = equal( phi0, phi1 ); 
+        for( int i = 0; i < Nx * Ny; ++i )
+            phi0[ i ] = phi1[ i ];
     }
 
-    phi = phi1;
+    while( c == false );
+
+    for( int i = 0; i < Nx * Ny; ++i )
+        phi[ i ] = phi1[ i ];
 
     return;
 }
@@ -152,10 +150,15 @@ void poisson::gaussmethod( void ){
 double* poisson::multi( double** matrix, double* v ){
 
     double *product = new double[ Nx * Ny ];
+    double sum;
 
-    for( int i = 0; i < Nx * Ny; ++i )
+    for( int i = 0; i < Nx * Ny; ++i ){
+        sum = 0;
         for( int k = 0; k < Nx * Ny; ++k )
-            product[ i ] = matilde[ i ][ k ] * v[ k ];
+            sum += matilde[ i ][ k ] * v[ k ];
+
+        product[ i ] = sum;
+    }
 
     return product;
 }
@@ -164,9 +167,15 @@ double* poisson::multi( double** matrix, double* v ){
 bool poisson::equal( double* a, double* b ){
     bool ans = true;
 
-    for ( int i = 0; i < Nx * Ny; ++i )
-        if( fabs( a[ i ] - b[ i ] ) < 0.00001 )
-            ans = false;
+    double diff = 0;
+
+    for ( int i = 0; i < Nx * Ny; ++i ){
+        diff += pow( a[ i ] - b[ i ], 2 );
+    }
+    std::cout << diff << std::endl;
+
+    if( diff > 1 )
+        ans = false;
 
     return ans;
 }
