@@ -3,8 +3,6 @@
 
 #include "poisson.h"
 
-#include <iostream>
-
 poisson::poisson( double lx, double ly,
                   double nx, double ny,
                   double Px, double Py,
@@ -57,13 +55,13 @@ void poisson::calcMatrix( void ){
         i1, j1;
 
     for( l = 0; l < ( Nx * Ny ); ++l ){
-        j = round( l / Ny );
-        i =    l - j * Nx  ;
+        j = round( l / Nx );
+        i =    l - j * Ny  ;
         for( m = 0; m < ( Nx * Ny ); ++m ){
-            j1 = round( m / Ny );
-            i1 =   m - j1 * Nx  ;
+            j1 = round( m / Nx );
+            i1 =   m - j1 * Ny  ;
 
-            if( ( i == 0 || i == l ) && ( j == 0 || j == l ) )
+            if( ( i == 0 || i == l ) || ( j == 0 || j == l ) )
                     if( l == m ) matrix[ l ][ m ] = 1;
                     else         matrix[ l ][ m ] = 0;
             else
@@ -106,16 +104,14 @@ void poisson::calcTilde( void ){
     for( int l = 0; l < Nx * Ny; ++l )
         for( int m = 0; m < Nx * Ny; ++m )
             if( l == m ){
-                matilde[ l ][ m ] = 0;
-                ftilde[ l ] = f[ l ] / matrix[ l ][ m ];
+                matilde[ l ][ m ] =                0;
+                ftilde      [ l ] = f[ l ]          / 
+                                    matrix[ l ][ m ];
             }
             else
                 matilde[ l ][ m ] = - matrix[ l ][ m ] /
                                       matrix[ l ][ l ];
     
-    /*for( int l = 0; l < Nx * Ny; ++l )
-        std::cout << ftilde[ l ] << ' ';*/
-
     return;
 }
 
@@ -137,12 +133,16 @@ void poisson::gaussmethod( void ){
         c = equal( phi0, phi1 ); 
         for( int i = 0; i < Nx * Ny; ++i )
             phi0[ i ] = phi1[ i ];
-    }
+        
+        }
 
     while( c == false );
 
     for( int i = 0; i < Nx * Ny; ++i )
         phi[ i ] = phi1[ i ];
+
+    delete phi0;
+    delete phi1;
 
     return;
 }
@@ -155,7 +155,7 @@ double* poisson::multi( double** matrix, double* v ){
     for( int i = 0; i < Nx * Ny; ++i ){
         sum = 0;
         for( int k = 0; k < Nx * Ny; ++k )
-            sum += matilde[ i ][ k ] * v[ k ];
+            sum += matrix[ i ][ k ] * v[ k ];
 
         product[ i ] = sum;
     }
@@ -169,10 +169,8 @@ bool poisson::equal( double* a, double* b ){
 
     double diff = 0;
 
-    for ( int i = 0; i < Nx * Ny; ++i ){
+    for ( int i = 0; i < Nx * Ny; ++i )
         diff += pow( a[ i ] - b[ i ], 2 );
-    }
-    std::cout << diff << std::endl;
 
     if( diff > 1 )
         ans = false;
@@ -188,9 +186,9 @@ void poisson::output( std::string nomefile ){
         j = round( l / Ny );
         i =    l - j * Nx  ;
 
-        file << i        << ' ' 
-             << j        << ' '
-             << phi[ i ] << std::endl
+        file << i * hx   << ' ' 
+             << j * hy   << ' '
+             << phi[ l ] << std::endl
              << std::endl;
     }
 
